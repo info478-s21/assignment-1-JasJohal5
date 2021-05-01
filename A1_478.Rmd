@@ -1,0 +1,150 @@
+---
+title: "A1 - INFO 478"
+author: "Jaskaran Johal"
+date: "4/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(utils)
+library(tidyr)
+library(ggplot2)
+
+```
+
+## R Markdown
+
+Describing Metrics
+- YLLs or Years of Life Lost is a measure of premature mortality. The calculation used to get YLLs is LifeExpectancy - Age times Death.
+- YLDs or Years Lived with Disability is life that is lost due to a disability, when calculating this metric, you need to see how the impairment (disability) has impacted an individual or group, and then how many people have the disability in the population (prevalence). Therefore, Prevalence * DisabilityWeight = YLDs.
+- DALYs or Disability Adjusted Life Years is the combination of YLLs and YLDs, it combines both of those into its metrics, therefore DALYs = Prevalence * DisabilityWeight + (LifeExpectancy - Age) * Deaths, basically meaning DALYs = YLLs + YLDs.
+
+In terms of Disability Weights, they range from 0 (stage of full health - meaning good) and 1 (death). For example, people who have mild disabilities like Asthma could have a DW of 0.1, 0.2, 0.3 which is close to full health - so it can be any number between that range for defining purposes. The age weight values the years lived more as a young adult compared to an older adult. Discounting describes preferences in time as used in economic models. Basically, this means that the weighted DALYs could be different if the person died earlier versus later. Which can be highly inaccurate to define DALY, so only one metric should be used within that. - there should be no discounting, it should be precise and unbiased. Prevalence is more accurate - it shows diseases that are more present. 
+
+# CHANGE WORDING OF ALL OF THIS BELOW
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+Describing Metrics ---
+* Years of Life Lost is a measure of premature mortality. The calculation for this metric is: YLLs = (LifeExpectancy - Age) * Deaths
+* Years Lived with Disability (YLDs) is healthy life that is lost due to a diability. There are two factors to calculating this metric. One is how 'bad' it is to have an impairment (the disability weight) and how many people actually have the impairment in the population (the prevalence): YLDs = Prevalence * DisabilityWeight 
+* Disability Adjusted Life Years (DALYs): DALYs is the combination of years of life lost and years lived with disability. It pretty much combines morality and morbidity into a common metric. The equation for this is: DALYs = Prevalence * DisabilityWeight + (LifeExpectancy - Age) * Deaths which dumbs down to DALYs = YLLs + YLDs
+
+Disability Weights ranged from 0 (which equals a stage of full health) and 1 (which equals death). From the paper, the disability weights from the exercises were not a solid 0 or 1. Disability weights were given in between the range. For example, people having mild hearing loss could be between the range of 0.2 and 0.3 which is pretty close to a stage of full health. 
+Age weighting is valuing years lived more as a young adult compared to as a young child or older adult. Discounting describes preferences in time as used in economic models. This means that the weighted DALY could be different if the person died earlier versus another person who died later. I think that both shouldn't be used when coming up with a DALY. There can't be 'favoritism' when calculating a DALY nor should there be discounting because anybody could die to the same disease at different times. The idea of prevalence is much better. Prevalence can show what diseases are more common. 
+
+```{r life expectancy}
+life_expectancy <- read.csv("./data/life_expectancy.csv")
+View(life_expectancy)
+```
+
+```{r deaths}
+deaths_info <- read.csv("./data/deaths.csv")
+View(deaths_info)
+```
+
+```{r ylds}
+ylds <- read.csv("./data/ylds.csv")
+View(ylds)
+```
+
+```{r combining data}
+fjoined_ylds_death <- full_join(ylds, deaths_info)
+View(fjoined_ylds_death)
+```
+
+```{r combining life expectancy}
+life_expectancy_joined <- full_join(fjoined_ylds_death, life_expectancy, by = "age")
+View(life_expectancy_joined)
+```
+
+```{r ylls calculation}
+ylls_joined <- mutate(life_expectancy_joined, ylls=life.expectancy * deaths)
+View(ylls_joined)
+```
+
+```{r dalys calculation}
+dalys_joined <- mutate(ylls_joined, dalys=ylls + ylds)
+View(dalys_joined)
+```
+
+```{r Burden by Age 1}
+age_burden <- dalys_joined %>% 
+  group_by(age) %>% 
+  summarize(mean_dalys = mean(dalys, na.rm = TRUE))
+View(age_burden)      
+ggplot(data = age_burden, aes(age, mean_dalys)) + geom_jitter() + theme(axis.text.x = element_text(angle = 35))
+```
+
+
+```{r Burden by Age 2}
+age_burden <- ylls_joined %>% 
+  group_by(age) %>% 
+  summarize(mean_ylls = mean(ylls, na.rm = TRUE))
+View(age_burden)      
+ggplot(data = age_burden, aes(age, mean_ylls)) + geom_jitter() + theme(axis.text.x = element_text(angle = 35))
+```
+
+
+
+## Burden by Age Summary:
+
+With the "Burden by Age" graph, it describes the relationship between the age and ylls (years of life lost). It showcases that when the age increases 
+in specific areas, like 50 to 69 years,we see an upwards trend in the lives lost. Basically, there's a positive trends in these areas. However, we can also notice
+a small change if we look overall for a greater lives lost ratio - making it remain mostly the same. In addition to this, if you look at mean dalys, you can see
+that a similar graph is produced - this is because dalys is made up of ylls and ylds - meaning a small difference. 
+
+```{r Burden by Sex 1}
+sex_burden <- dalys_joined %>% 
+  group_by(sex) %>% 
+  summarize(mean_ylls = mean(ylls, na.rm = TRUE))
+View(ylds_sex)      
+ggplot(data = sex_burden, aes(sex, mean_ylls)) + geom_bar(stat = "identity") + theme(axis.text.x = element_text(angle = 35))
+
+```
+
+```{r Burden by Sex}
+sex_burden <- dalys_joined %>%
+  group_by(sex) %>%
+  summarize(mean_dalys =mean(dalys, na.rm= TRUE))
+View(sex_burden)
+ggplot(data = sex_burden, aes(sex, mean_dalys)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 35))
+```
+## Burden by Sex Summary:
+
+With the "Burden by Sex" graph we see that those impacted by DALYS (disabiility adjusted lfie years) or dsiabilites, are females - because the graphs showcase
+that they had more disabiltiies, but also lived a shorter life span, in comparison to the men, who lived significantly lower. If we do a comparison between sexes
+in terms of YLDs, the average is equivalent for both sexes, the only difference is females are on the higher end of DALYs.
+
+```{r Burden by Cause}
+deaths_burden <- join_dalys %>%
+  group_by(cause_name) %>%
+  summarize(mean_deaths = mean(deaths, na.rm = TRUE))
+View(deaths_burden)
+ggplot(data = deaths_burden, aes(mean_deaths, cause_name)) + geom_jitter()
+```
+
+```{r Burden by Cause #2}
+deaths_burden <- dalys_joined %>% 
+  group_by(cause_name) %>% 
+  summarize(mean_deaths = mean(deaths, na.rm = TRUE), mean_ylds = mean(ylds), mean_ylls   = mean(ylls), mean_dalys = mean(dalys))
+view(deaths_burden)
+
+five_top <- deaths_burden[order(deaths_burden$mean_dalys,
+                                 decreasing = TRUE), ] %>%
+  top_n(5, mean_dalys)
+
+ggplot(data = deaths_burden, aes(mean_deaths, cause_name)) + geom_jitter()
+
+```
+
+## Burden by Cause Summary:
+
+If we consider the "Burden by Cause" graph, we can see that foreign body, testicular cancer are amongst the ones that have the most deaths, followed by HIV, etc. 
+We can see that these deaths are in the upper 8e's to 9e's. While the others have less deaths in terms of the average amount of deaths occurring due to different causes.
+We can also look at the five top casues due to DALYs and see that the sepsis and other neonatal infections cause the most dalys, its an average of 4 times more than the second leading cause of
+heart disease. This does a comparison between YLLs vs YLDS, meaning a big grouping near the left corner of the graph and spacing when looking at the top YLDs and right YLLS. 
